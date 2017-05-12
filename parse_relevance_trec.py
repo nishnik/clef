@@ -22,7 +22,7 @@ for a in data:
 # for a in data:
 #     docs.add(a[2])
 
-# for a in docs:
+# for a in sorted(docs)[:1000]:
 #     print (a)
 
 # print (len(docs)) # = 13137
