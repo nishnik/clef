@@ -12,7 +12,7 @@ import gzip
 #     if "very_" == a[:len("very_")]:
 #         very_files.append(a)
 
-path = 'very_9_small_7_yourh5013_12.trec.gz'
+path = '/net/data/cemi/CLEF-2015-eHealth/trec/very_9_small_7_yourh5013_12.trec.gz'
 
 data = ""
 with gzip.open(path, 'r') as f:
@@ -43,7 +43,30 @@ for i in range(len(refined_data)):
     regex = re.compile('[%s]' % re.escape(string.punctuation))
     temp = regex.sub(' ', temp)
     temp = ' '.join(temp.split())
-    refined_data[i][1] = temp
+    no_integers = [x for x in temp.split(' ') if not x.isdigit()]
+    no_one_letter = [x for x in no_integers if not len(x) == 1]
+    refined_data[i][1] = no_one_letter
+
+print (refined_data[0][1])
+
+from gensim.models.keyedvectors import KeyedVectors
+word_vectors = KeyedVectors.load_word2vec_format('/net/data/cemi/saleh/embeddings/pubmed_s100w10_min.bin', binary=True) 
+
+sum_tot = 0
+sum_not_pre = 0
+for b in refined_data:
+    c = b[1]
+    total = len(c)
+    not_pre = 0
+    for a in c:
+        if not a in word_vectors.vocab:
+            print (a)
+            not_pre += 1
+    print (not_pre, "/", total)
+    sum_tot += total
+    sum_not_pre += not_pre
+
+print ("----", sum_not_pre, "/", sum_tot)
 
 #TODO : remove stopwords
 
