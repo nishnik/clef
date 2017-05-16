@@ -1,16 +1,16 @@
 from bs4 import BeautifulSoup
 import gzip
 # in the directory /net/work/people/saleh/clir_experiments/resources/new_data_split/
-path = 'en.dev_train'
+path = '/net/work/people/saleh/clir_experiments/resources/new_data_split/en.dev_train'
 data = ""
 with open(path, 'r') as f:
     data = f.read()
 
 source = BeautifulSoup(data, "html5lib")
 topics = source.find('html').find('body').find('topics').findAll('topic')
-refined_data = []
+topic_dict = {}
 for a in topics:
-    refined_data.append([a.id.text, a.title.text])
+	topic_dict[a.id.text] = a.title.text
 
 
 """
