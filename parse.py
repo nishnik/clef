@@ -37,7 +37,7 @@ def parse_file(path):
     refined_data = []
     for a in docs:
         refined_data.append([pat_docid.findall(a)[0], pat_doctext.findall(a)[0], pat_doctitle.findall(a)[0]])
-    print (len(refined_data))
+    # print (len(refined_data))
     def parse(to_parse):
         to_parse = to_parse.decode('utf-8').lower()
         # Remove punctuation and remove special chars and lower it
@@ -61,10 +61,6 @@ def change_to_dict_and_write(refined_data, output_path):
     dict_topic = {}
     for a in refined_data:
         dict_topic[a[0]] = [a[2], a[1]]
-    if (isfile(output_path)):
-        print ("FILE ALREADY EXIST", output_path)
-        import sys
-        sys.exit()
     with open(output_path, 'w') as outfile:
          json.dump(dict_topic, outfile, sort_keys = True, indent = 4,
                    ensure_ascii = False)
@@ -106,10 +102,13 @@ for a in very_files_rest_dict:
 
 ##########################################
 for a in not_very_files:
-    path = '/net/data/cemi/CLEF-2015-eHealth/trec/' + a
-    refined_data = parse_file(path)
-    change_to_dict_and_write(refined_data, 'data/' + a[:-8])
-
+    try:
+        path = '/net/data/cemi/CLEF-2015-eHealth/trec/' + a
+        refined_data = parse_file(path)
+        change_to_dict_and_write(refined_data, 'data/' + a[:-8])
+    except Exception as e:
+        print (a, e)
+        continue
 
 # from gensim.models.keyedvectors import KeyedVectors
 # word_vectors = KeyedVectors.load_word2vec_format('/net/data/cemi/saleh/embeddings/pubmed_s100w10_min.bin', binary=True) 
