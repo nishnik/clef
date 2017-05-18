@@ -1,6 +1,6 @@
 # directory: /net/work/people/saleh/clir_experiments/resources/new_data_split/data
 
-path = 'qrels_dev_train.txt'
+path = '/net/work/people/saleh/clir_experiments/resources/new_data_split/data/qrels_dev_train.txt'
 with open(path, 'r') as f:
     data = f.readlines()
 
@@ -16,7 +16,15 @@ for a in data:
         topic_wise[a[0]] = {}
         topic_wise[a[0]]['0'] = []
         topic_wise[a[0]]['1'] = []
+        topic_wise[a[0]][a[3]].append(a[2])
 
+from os import listdir
+from os.path import isfile, join
+
+count = 0
+for a in topic_wise:
+    if (len(topic_wise[a]['1']) == 0):
+        print (a)
 # Checked that topics are same
 # docs = set()
 # for a in data:
