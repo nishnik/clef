@@ -9,9 +9,8 @@ import string
 import re
 import random
 import operator
-from itertools import izip
 from gensim.models.keyedvectors import KeyedVectors
-
+import json
 ## Here connection is a dict which gives positively related documents id
 ## {'12' : ['13', '14'], '13' : ['14', '15']}
 ##
@@ -20,7 +19,7 @@ from gensim.models.keyedvectors import KeyedVectors
 
 
 
-WINDOW_SIZE = 3 # this is to decide window for words in a sentence (sliding window) See section 3.2
+WINDOW_SIZE = 1 # this is to decide window for words in a sentence (sliding window) See section 3.2
 TOTAL_LETTER_GRAMS = 100 # Word Vector Dimension
 WORD_DEPTH = WINDOW_SIZE * TOTAL_LETTER_GRAMS # See equation (1).
 K = 300 # Dimensionality of the max-pooling layer. See section 3.4.
@@ -29,6 +28,7 @@ J = 4 # Number of Negative Documents
 FILTER_LENGTH = 1 # We only consider one time step for convolutions.
 
 # loading the qrels
+from os.path import isfile, join
 qrel_path = '/net/work/people/saleh/clir_experiments/resources/new_data_split/data/qrels_dev_train.txt'
 with open(qrel_path, 'r') as f:
     data = f.readlines()
@@ -39,12 +39,15 @@ for i in range(len(data)):
 connection = {}
 
 for a in data:
-    if a[0] in topic_wise.keys():
-        connection[a[0]][a[3]].append(a[2])
+    if a[0] in connection.keys():
+        if (isfile("data/" + a[2][:-7])):
+            connection[a[0]][a[3]].append(a[2])
     else:
-        connection[a[0]] = {}
-        connection[a[0]]['0'] = []
-        connection[a[0]]['1'] = []
+        if (isfile("data/" + a[2][:-7])):
+            connection[a[0]] = {}
+            connection[a[0]]['0'] = []
+            connection[a[0]]['1'] = []
+            connection[a[0]][a[3]].append(a[2])
 
 to_del = ""
 # because there is one file with no +ve
@@ -54,12 +57,27 @@ for a in connection:
 
 del connection[to_del]
 
-connection_list = []
+# for a in connection:
+#     for b in connection[a]['0']:
+#         if not isfile("data/"+b[:-7]):
+#             print (b)
+#     for b in connection[a]['1']:
+#         if not isfile("data/"+b[:-7]):
+#             print (b)
 
-for a in connection:
-    connection_list.append(connection[a])
 
-connection = connection_list
+# connection_list = []
+
+# for a in connection:
+#     connection_list.append(connection[a])
+
+# connection = connection_list
+
+
+# loading the query data
+query_data = {}
+with open('topic_data') as data_file:
+    query_data = json.load(data_file)
 
 # pubmed_fetch = json.load(open('pubmed_fetch_gens.json'))
 # all_keys = list(pubmed_fetch.keys())
@@ -106,29 +124,17 @@ def get_vector(words):
         if not word in emb:
             continue
         word_vec = emb[word]
-        if (len(sliding_window) < WINDOW_SIZE):
-            sliding_window.append(word_vec)
-        else:
-            sliding_window.append(word_vec)
-            temp = sliding_window[0]
-            for s in sliding_window[1:]:
-                temp = np.concatenate((temp, s))
-            output_vec.append(temp)
-            del temp
-            del sliding_window[0]
-    del sliding_window
-    return np.array(output_vec)
+        sliding_window.append(word_vec)
+    return  np.array(sliding_window)
 
 
 train_till = 80
 ## Get random negative doc ids for given pmid
-def get_negatives(id):
-    output_ids = []
-    while (len(output_ids) < J):
-        ind = random.randrange(0, train_till)
-        if not all_keys[ind] in connection[pmid]:
-            output_ids.append(all_keys[ind])
-    return output_ids
+def get_negatives(id_):
+    arr = connection[id_]['0']
+    import random
+    random.shuffle(arr)
+    return arr[:J]
 
 
 def R(vects):
@@ -194,29 +200,53 @@ model.compile(optimizer = "adadelta", loss = "binary_crossentropy")
 
 y = np.ones(1)
 
-for ind in range(train_till):
-    try:
-        print (ind+1, "/", train_till)
-        i = all_keys[ind]
-        l_Qs = get_vector(pubmed_fetch[i]['abstract'].lower())
-        ## For making it compatible with model, we reshape it
-        l_Qs = l_Qs.reshape(1, l_Qs.shape[0], l_Qs.shape[1])
-        for jind in range(min(len(connection[i]), 6)):
-            j = connection[i][jind]
-            pos_l_Ds = get_vector(pubmed_fetch[j]['abstract'].lower())
-            pos_l_Ds = pos_l_Ds.reshape(1, pos_l_Ds.shape[0], pos_l_Ds.shape[1])
-            neg_l_Ds = []
-            for a in get_negatives(i):
-                temp = get_vector(pubmed_fetch[a]['abstract'].lower())
-                neg_l_Ds.append(temp.reshape(1, temp.shape[0], temp.shape[1]))   
-            history = model.fit([l_Qs, pos_l_Ds] + neg_l_Ds, y, nb_epoch = 1, verbose = 1)
-        ## save evry 1000 iterations
-        if (ind % 1000 == 0):
-            model.save_weights("model_gens.h5")
-            print ("saved")
-    except Exception as e:
-        print (ind, all_keys[ind], e)
-        continue
+def get_doc_vector(docid):
+    dict_ = {}
+    with open('data/' + docid[:-7]) as data_file:    
+        dict_ = json.load(data_file)
+    temp = dict_[docid]
+    temp = temp[0] + temp[1]
+    del dict_
+    return get_vector(temp)
+
+for a in connection:
+    for b in connection[a]['1']:
+        try:
+            query_vec = get_vector(query_data[a])
+            query_vec = query_vec.reshape(1, query_vec.shape[0], query_vec.shape[1])
+            positive = get_doc_vector(b)
+            positive = positive.reshape(1, positive.shape[0], positive.shape[1])
+            negatives = get_negatives(a)
+            negatives = [get_doc_vector(n) for n in negatives]
+            negatives = [n.reshape(1, n.shape[0], n.shape[1]) for n in negatives]
+            # print ("hello", query_vec.shape, positive.shape, a, b)
+            history = model.fit([query_vec, positive] + negatives, y, nb_epoch = 1, verbose = 1)
+        except Exception as e:
+            print (e, a, b)
+            continue
+# for ind in range(train_till):
+#     try:
+#         print (ind+1, "/", train_till)
+#         i = all_keys[ind]
+#         l_Qs = get_vector(pubmed_fetch[i]['abstract'].lower())
+#         ## For making it compatible with model, we reshape it
+#         l_Qs = l_Qs.reshape(1, l_Qs.shape[0], l_Qs.shape[1])
+#         for jind in range(min(len(connection[i]), 6)):
+#             j = connection[i][jind]
+#             pos_l_Ds = get_vector(pubmed_fetch[j]['abstract'].lower())
+#             pos_l_Ds = pos_l_Ds.reshape(1, pos_l_Ds.shape[0], pos_l_Ds.shape[1])
+#             neg_l_Ds = []
+#             for a in get_negatives(i):
+#                 temp = get_vector(pubmed_fetch[a]['abstract'].lower())
+#                 neg_l_Ds.append(temp.reshape(1, temp.shape[0], temp.shape[1]))   
+#             history = model.fit([l_Qs, pos_l_Ds] + neg_l_Ds, y, nb_epoch = 1, verbose = 1)
+#         ## save evry 1000 iterations
+#         if (ind % 1000 == 0):
+#             model.save_weights("model_gens.h5")
+#             print ("saved")
+#     except Exception as e:
+#         print (ind, all_keys[ind], e)
+#         continue
 
 
 ### TESTING ###

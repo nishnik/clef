@@ -18,20 +18,11 @@ for a in topics:
     temp = regex.sub(' ', temp)    
     topic_dict[pat_topicid.findall(a)[0]] = temp.split()
 
-from gensim.models.keyedvectors import KeyedVectors
-word_vectors = KeyedVectors.load_word2vec_format('/net/data/cemi/saleh/embeddings/pubmed_s100w10_min.bin', binary=True) 
 
 
-count = 0
-tot = 0
 
-for a in topic_dict:
-    for b in topic_dict[a]:
-        if b .lower()not in word_vectors.vocab:
-            print (b, a)
-            count += 1
-        tot += 1
-
+with open("topic_data", 'w') as outfile:
+    json.dump(topic_dict, outfile, sort_keys = True, indent = 4, ensure_ascii = False)
 
 """
 We have following topic ids:
