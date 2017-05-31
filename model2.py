@@ -32,8 +32,8 @@ WINDOW_SIZE_d = 3 # this is to decide window for words in a sentence (sliding wi
 TOTAL_LETTER_GRAMS = 100 # Word Vector Dimension
 WORD_DEPTH_q = WINDOW_SIZE_q * TOTAL_LETTER_GRAMS # See equation (1).
 WORD_DEPTH_d = WINDOW_SIZE_d * TOTAL_LETTER_GRAMS # See equation (1).
-K = 300 # Dimensionality of the max-pooling layer. See section 3.4.
-L = 128 # Dimensionality of latent semantic space. See section 3.5.
+K = 600 # Dimensionality of the max-pooling layer. See section 3.4.
+L = 256 # Dimensionality of latent semantic space. See section 3.5.
 J = 4 # Number of Negative Documents
 FILTER_LENGTH = 1 # We only consider one time step for convolutions.
 
@@ -266,9 +266,9 @@ for a in connection:
             print (e, a, b)
             continue
     if (count > 100 and count % 500 == 0):
-        model.save_weights(str(count)+"model.h5")
+        model.save_weights(str(count)+"_n_model.h5")
 
-
+model.save_weights(str(count)+"_n_model.h5")
 sys.stdout = orig_stdout
 f.close()
 
