@@ -2,7 +2,7 @@
 import sys
 
 orig_stdout = sys.stdout
-f = open('out.txt', 'w')
+f = open('2out.txt', 'w')
 sys.stdout = f
 print ("START")
 import numpy as np
